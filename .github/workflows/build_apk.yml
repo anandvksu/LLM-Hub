@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Stable image use karne se environment warnings nahi aayengi
+    runs-on: ubuntu-24.04
+
+    steps:
+      # 1. Checkout repository with all submodules
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # 2. Modern Java setup (v5 version warning-free)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Setup Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 4. Install required NDK & CMake for local LLM (llama.cpp)
+      - name: Install Android NDK & CMake
+        run: |
+          yes | sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
+
+      # 5. Make Gradlew Executable
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
+      # 6. Build Debug APK
+      - name: Build Debug APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # 7. Upload APK Artifact
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LLM-Hub-App
+          path: android/app/build/outputs/apk/debug/*.apk
